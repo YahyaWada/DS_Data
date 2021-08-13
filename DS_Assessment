@@ -1,0 +1,184 @@
+#File: NanoString MLC1 & CXCL1 Comparison
+#Author: Yahya Wada
+#Description: This script takes NanoString nCounter assay data
+#(RCC files) and calculates differences between the baseline 
+#and post-treatment timepoints for two genes of interest: 
+#MCL1 and CXCL1.
+
+#Set Directory
+library(rstudioapi)
+setwd(dirname(getActiveDocumentContext()$path))
+
+
+#Load library files needed for script
+library(nanostringr)
+library(reshape2)
+library(stringr)
+library(cluster)
+library(purrr)
+library(data.table)
+library(ggtext)
+library(RColorBrewer)
+library(plyr)
+library(dplyr)
+library(tibble)
+library(tidyr)
+library(ggplot2)
+library(tidyr)
+library(gplots)
+library(heatmap3)
+library(pheatmap)
+library(gridExtra)
+#####################Compile RCC Data########################################
+#Create List/Dataframes of RCC files
+RCC_Data = read_rcc(path = "DS_Case_Study_Data")
+#Parse Raw RCC data from files
+Raw_RCC = RCC_Data[["raw"]]
+#Turn row names into endogenous, positive, negative, or housekeeping conditions
+rownames(Raw_RCC) <- make.names(Raw_RCC[,1], unique = TRUE)
+#Create subset of RCC data w/out character info
+Raw_Sub1 = subset(Raw_RCC, select = c(4:13))
+#Filter subset to only contain positive & negative control genes
+Raw_Sub = Raw_Sub1 %>%
+  slice(131:144)
+RCC_Long <- pivot_longer(data = Raw_RCC, 
+                          cols = -c(1:3), 
+                          names_to = "Patient.ID", 
+                          values_to = "RCC")
+rownames(RCC_Long) = make.names(RCC_Long[,1], unique = TRUE)
+
+#-----------------------------------------------------------
+# Scale heatmap data & convert to matrix
+Data.log.scale <- scale(log10(Raw_Sub + 1))
+y <- as.matrix(Data.log.scale)
+Data.y = as.data.frame(y)
+
+# Cluster pos./neg. controls into rows and samples into columns
+hr <- hclust(as.dist(1 - cor(t(y), method = "pearson")), method = "complete")
+hc <- hclust(as.dist(1 - cor(y, method = "spearman")), method = "complete")
+
+#Set plot parameters (color, trees, etc)
+mycl <-  cutree(hr, h = max(hr$height) / 1.01)
+mycolhc <-   rainbow(length(unique(mycl)), start = 0.1, end = 0.9)
+mycolhc <- mycolhc[as.vector(mycl)]
+cluster <- as.matrix(mycl)
+mycol <-  colorpanel(75, "red", "white", "blue")
+
+# Plot heatmap
+
+DS_Heatmap = heatmap.2(
+  y,
+  Rowv = as.dendrogram(hr),
+  Colv = as.dendrogram(hc),
+  col = mycol,
+  density.info = "none",
+  trace = "none",
+  dendrogram = "both",
+  scale = "row",
+  labRow = NULL,
+  labCol = NULL,
+  margins = c(15, 10),
+  RowSideColors = mycolhc
+)
+
+# Save as PNG
+
+
+####################Create Box Plot for MCL1/CXCL1 baseline vs treatment######################
+#----MCL1 Plot---------------
+
+#Sort RCC data for MCL1
+MCL1_Filtered_RCC = RCC_Long %>%
+  filter(Name == 'MCL1')
+#Sort MCL1 data into baseline group
+MCL1_Baseline = MCL1_Filtered_RCC %>%
+  slice(1,3,5,7,9)
+#Sort MCL1 data into treatment group
+MCL1_Treatment = MCL1_Filtered_RCC %>%
+  slice(2,4,6,8,10)
+#Filter RCC data for MCL1
+MCL1_Filtered_RCC = RCC_Long %>%
+  filter(Name == 'MCL1')
+#Filter MCL1 data to Patient ID group
+MCL1_ID = MCL1_Filtered_RCC %>%
+  select(c(4,5))
+
+
+#Sort MCL1 data into baseline group
+MCL1_Baseline = MCL1_ID %>%
+  slice(1,3,5,7,9)
+#Add "Baseline" Condition column to MCL1 dataset
+Baseline = c("Baseline")
+MCL1_Baseline$Condition = Baseline
+MCL1_Baseline = MCL1_Baseline %>%
+  select(c(2,3))
+#Sort MCL1 data into treatment group
+MCL1_Treatment = MCL1_ID %>%
+  slice(2,4,6,8,10)
+#Add "Treatment" Condition column to MCL1 dataset
+Treatment = c("Treatment")
+MCL1_Treatment$Condition = Treatment
+MCL1_Treatment = MCL1_Treatment %>%
+  select(c(2,3))
+
+
+#Create boxplot dataframe for MCL1 baseline vs treatment
+data = data.frame(values = c(log10(MCL1_Baseline$RCC+1), log10(MCL1_Treatment$RCC+1)),                      
+                   group = c(MCL1_Baseline$Condition,
+                             MCL1_Treatment$Condition))
+#Plot baseline vs post-treatment MCL1
+MCL1.Plot = ggplot(data, aes(x = group, y = values, fill = group)) +
+  geom_boxplot() + geom_point(aes(color= values),position=position_dodge(width=0.5))
+MCL1.Plot + ggtitle("MCL1 Baseline vs Treatment ") +
+  xlab("Condition") + ylab("Log of RCC")
+
+# Save as PNG
+
+#----CXCL1 Plot---------------
+
+#Sort RCC data for CXCL1
+CXCL1_Filtered_RCC = RCC_Long %>%
+  filter(Name == "CXCL1")
+#Sort CXCL1 data into baseline group
+CXCL1_Baseline = CXCL1_Filtered_RCC %>%
+  slice(1,3,5,7,9) 
+#Sort CXCL1 data into treatment group
+CXCL1_Treatment = CXCL1_Filtered_RCC %>%
+  slice(2,4,6,8,10)
+#Filter RCC data for CXCL1
+CXCL1_Filtered_RCC = RCC_Long %>%
+  filter(Name == 'CXCL1')
+#Filter CXCL1 data to Patient ID group
+CXCL1_ID = CXCL1_Filtered_RCC %>%
+  select(c(4,5))
+
+
+#Sort CXCL1 data into baseline group
+CXCL1_Baseline = CXCL1_ID %>%
+  slice(1,3,5,7,9)
+#Add "Baseline" Condition column to CXCL1 dataset
+Baseline = c("Baseline")
+CXCL1_Baseline$Condition = Baseline
+CXCL1_Baseline = CXCL1_Baseline %>%
+  select(c(2,3))
+#Sort CXCL1 data into treatment group
+CXCL1_Treatment = CXCL1_ID %>%
+  slice(2,4,6,8,10)
+#Add "Treatment" Condition column to CXCL1 dataset
+Treatment = c("Treatment")
+CXCL1_Treatment$Condition = Treatment
+CXCL1_Treatment = CXCL1_Treatment %>%
+  select(c(2,3))
+
+
+#Create boxplot dataframe for CXCL1 baseline vs treatment
+data2 = data.frame(values = c(log10(CXCL1_Baseline$RCC+1), log10(CXCL1_Treatment$RCC+1)),                      
+                  group = c(CXCL1_Baseline$Condition,
+                            CXCL1_Treatment$Condition))
+#Plot baseline vs post-treatment CXCL1
+CXCL1.Plot = ggplot(data2, aes(x = group, y = values, fill = group)) +
+  geom_boxplot()  + geom_point(aes(color= values),position=position_dodge(width=0.5))
+CXCL1.Plot + ggtitle("CXCL1 Baseline vs Treatment ") +
+  xlab("Condition") + ylab("Log of RCC")
+
+# Save as PNG
