@@ -81,8 +81,13 @@ DS_Heatmap = heatmap.2(
   RowSideColors = mycolhc
 )
 
-# Save as PNG
+# Save as JPEG
+jpeg("DS_Heatmap_plot.jpeg", quality = 100)
 
+plot(DS_Heatmap)
+
+# Close device
+dev.off()
 
 ####################Create Box Plot for MCL1/CXCL1 baseline vs treatment######################
 #----MCL1 Plot---------------
@@ -132,7 +137,13 @@ MCL1.Plot = ggplot(data, aes(x = group, y = values, fill = group)) +
 MCL1.Plot + ggtitle("MCL1 Baseline vs Treatment ") +
   xlab("Condition") + ylab("Log of RCC")
 
-# Save as PNG
+# Save as JPEG
+jpeg("MCL1_plot.jpeg", quality = 100)
+
+plot(MCL1.Plot)
+
+# Close device
+dev.off()
 
 #----CXCL1 Plot---------------
 
@@ -181,4 +192,10 @@ CXCL1.Plot = ggplot(data2, aes(x = group, y = values, fill = group)) +
 CXCL1.Plot + ggtitle("CXCL1 Baseline vs Treatment ") +
   xlab("Condition") + ylab("Log of RCC")
 
-# Save as PNG
+# Save as JPEG
+jpeg("CXCL1_plot.jpeg", quality = 100)
+
+plot(CXCL1.Plot)
+
+# Close device
+dev.off()
